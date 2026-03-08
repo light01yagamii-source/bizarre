@@ -1,33 +1,49 @@
 -- player_esp.lua
-local toggle = getgenv().PlayerESPToggle
+-- this file is fetched by the loader, make it valid Lua
+
+local RS = game:GetService("RunService")
+local pathRoot = workspace.Live -- customise if needed
+
+local adornments = {}
 
 local function clear()
-    for _, chr in pairs(workspace.Live:GetChildren()) do
-        local b = chr:FindFirstChild("ESPBox")
-        if b then b:Destroy() end
+    for _, a in pairs(adornments) do
+        if a and a.Parent then a:Destroy() end
     end
+    adornments = {}
 end
 
-toggle:Callback(function(on)
+local function makeBox(inst)
+    if adornments[inst] then return end
+    local box = Instance.new("BoxHandleAdornment")
+    box.Name        = "ESPBox"
+    box.Adornee     = inst
+    box.Size        = inst:GetExtentsSize()
+    box.Transparency = 0.5
+    box.Color3      = Color3.new(1,0,0)
+    box.ZIndex      = 10
+    box.Parent      = inst
+    adornments[inst] = box
+end
+
+local conn
+local function onToggle(val)
+    if conn then conn:Disconnect(); conn = nil end
     clear()
-    if on then
-        toggle._conn = game:GetService("RunService")
-                        .RenderStepped:Connect(function()
-            for _, chr in pairs(workspace.Live:GetChildren()) do
-                if not chr:FindFirstChild("ESPBox") then
-                    local b = Instance.new("BoxHandleAdornment")
-                    b.Name    = "ESPBox"
-                    b.Adornee = chr
-                    b.Size    = chr:GetExtentsSize()
-                    b.Transparency = 0.5
-                    b.Color3  = Color3.new(1,0,0)
-                    b.ZIndex  = 10
-                    b.Parent  = chr
+    if val then
+        conn = RS.RenderStepped:Connect(function()
+            for _, c in pairs(pathRoot:GetChildren()) do
+                if not adornments[c] then
+                    makeBox(c)
                 end
             end
         end)
-    elseif toggle._conn then
-        toggle._conn:Disconnect()
-        toggle._conn = nil
     end
-end)
+end
+
+-- the loader will call this when the toggle value changes
+return {
+    Init = function(toggle)
+        toggle:Callback(onToggle)
+    end
+}
